@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Node / Expo (app/)
+node_modules/
+.expo/
+dist/
+web-build/
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+*.pem
+
+# Data & experiment artifacts (keep small, versioned files only)
+data/raw/
+data/external/
+runs/
+*.parquet
+*.zip
+
+# Infra
+.terraform/
+*.tfstate
+*.tfstate.*
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Private notes (kept in Obsidian)
+docs/journal/
+docs/weeks/
