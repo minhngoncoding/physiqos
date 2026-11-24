@@ -78,7 +78,7 @@ Full details live in `data/DATACARD.md`. Summary:
 
 | Set | Size | Composition |
 |---|---|---|
-| Text | 60 | **A** single item with grams (20) · **B** single item, household units (15) · **C** multi-item meals (15) · **D** hard cases: typos, mixed language, non-food, vague (10). ≥ 60% Vietnamese. |
+| Text | 75 | **A** single item with grams (23) · **B** single item, household units (17) · **C** multi-item meals (21) · **D** hard cases: typos, mixed language, non-food, vague (14). ≥ 60% Vietnamese. |
 | Image | ~40 | ~30 Nutrition5k dishes (stratified by kcal range) + ~10 self-photographed Vietnamese meals weighed on a kitchen scale |
 
 **Ground truth.** Labels come from USDA FoodData Central and the Vietnamese Food Composition Table, computed as `Σ grams × per_100g / 100` in code. Every value records its source and food ID. **No LLM is used to produce labels.**
@@ -193,7 +193,7 @@ A release candidate ships only if **all** of the following hold on the **test sp
 ## 7. Evaluation protocol
 
 ### 7.1 Splits
-- **70% dev / 30% test**, **stratified** by `group` (A–D) × `modality` (text / image), fixed random seed (`42`), stored in each sample's `split` field.
+- **70% dev / 30% test**, **stratified** by `group` (A–D) × `modality` (text / image) × language (Vietnamese / other), fixed random seed (`42`), stored in each sample's `split` field.
 - Splits are created **before** any model output is inspected.
 
 ### 7.2 Using the test set
