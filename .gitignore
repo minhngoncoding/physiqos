@@ -23,6 +23,8 @@ web-build/
 # Data & experiment artifacts (keep small, versioned files only)
 data/raw/
 data/external/
+data/FoodData_Central_*.json
+data/.cache/
 runs/
 *.parquet
 *.zip
