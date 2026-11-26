@@ -7,9 +7,10 @@ Evaluation datasets for PhysiqOS calorie and macro estimation. The metrics, ship
 | File               | Status                         | Description                                                                           |
 | ------------------ | ------------------------------ | ------------------------------------------------------------------------------------- |
 | `text_v0.1.jsonl`  | Labeled (75/75)                | 75 text prompts (groups A–D), one JSON object per line                                |
-| `image_v0.1.jsonl` | 30 Nutrition5k, self-photographed pending | ~40 meal images (Nutrition5k subset + self-photographed, weighed meals). Built by `scripts/build_image_dataset.py` |
+| `image_v0.1.jsonl` | 30 Nutrition5k, 20 IFPRI atlas                | ~40 meal images (Nutrition5k subset + self-photographed, weighed meals). Built by `scripts/build_image_dataset.py` |
 | `nutrition5k_selected.csv` | Fixed (30)             | The 30 Nutrition5k dishes in the image set: dish ID, kcal bin, ingredient group, ground-truth totals. Fixed list, see [Nutrition5k subset](#nutrition5k-subset) |
-| `DATACARD.md`      | Planned                        | Purpose, composition, labeling process, known limitations and biases                  |
+| `ifpri_atlas_selected.json` | Fixed (20), labeled        | 20 Vietnamese meals from the IFPRI food atlas: meal number, portion size, image path, transcribed dish weights, frozen split, and the `items` to fill when labeling |
+| `DATACARD.md`      | Draft                          | Purpose, composition, labeling process, known limitations and biases                  |
 | `images/`          | Planned                        | Self-photographed images only. Nutrition5k images are referenced by ID, not committed |
 
 ## Text set composition (v0.1)
@@ -50,6 +51,7 @@ Labeling adds `items` (per-item grams, nutrient values per 100 g, `source`, `sou
 | [USDA FoodData Central](https://fdc.nal.usda.gov/) (Foundation, SR Legacy, FNDDS) | Ingredients and generic foods | Public domain (CC0 1.0)                                                                                                               |
 | Bảng thành phần thực phẩm Việt Nam, Viện Dinh dưỡng Quốc gia                      | Vietnamese foods and dishes   | Copyrighted publication. Only individual values are cited, with the table entry as `source_id`. The table itself is not redistributed |
 | [Nutrition5k](https://github.com/google-research-datasets/Nutrition5k)            | Image set                     | CC BY 4.0. Images are referenced by dish ID and downloaded by script                                                                  |
+| [IFPRI photographic food atlas, Thai Nguyen](https://hdl.handle.net/10568/139815) | Image set (Vietnamese meals) | CC BY 4.0. Photos are cropped from the PDF locally and not committed |
 
 Raw database downloads are not committed. To reproduce lookups, download the sources above and record the release version and download date in `DATACARD.md`.
 
@@ -57,6 +59,7 @@ Expected local paths (git-ignored), used by `scripts/lookup.py`:
 
 - `data/FoodData_Central_*.json`: USDA FDC JSON downloads (SR Legacy, Foundation, Survey/FNDDS 2024-10-31; FNDDS from <https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_survey_food_json_2024-10-31.zip>, unzipped file renamed from `surveyDownload.json`)
 - `data/raw/nutrition5k/`: `dish_metadata_cafe1.csv`, `dish_metadata_cafe2.csv` and `ingredients_metadata.csv` from the Nutrition5k bucket (`gs://nutrition5k_dataset/nutrition5k_dataset/metadata/`), and the overhead image of each selected dish at `images/dish_<id>/rgb.png` (from `imagery/realsense_overhead/dish_<id>/rgb.png`, 30 images, ~12 MB). `scripts/build_image_dataset.py` reads these.
+- `data/raw/ifpri_atlas/atlas.pdf`: the IFPRI atlas ([PDF](https://cgspace.cgiar.org/bitstreams/02c9c9e1-9c0f-453d-b1a8-4e6a843a7fc0/download), 126 pages). Each selected photo is cropped to `data/raw/ifpri_atlas/images/meal_<NNN>_<size>.png` from page `pdf_page` in `ifpri_atlas_selected.json`: the meal's column on that page, the row of its portion size (S, M, L, XL from top to bottom).
 - `data/raw/vn_fct/VTN_FCT_2007.pdf`: the 2007 Vietnamese table as published by FAO ([PDF](https://www.fao.org/fileadmin/templates/food_composition/documents/pdf/VTN_FCT_2007.pdf)), 525 foods. `source_id` is the table's *Mã số*. Values are per 100 g edible portion. Note: kcal for alcoholic drinks excludes alcohol (beer 11 kcal/100 g), so use USDA for those.
 
 ## Nutrition5k subset
@@ -77,7 +80,7 @@ Labels are the Nutrition5k totals (ingredients weighed by the dataset authors). 
 - Labels are computed in code from per-100 g values: `kcal = Σ grams × kcal_per_100g / 100`. No mental arithmetic.
 - Every nutrient value carries a `source` and `source_id`.
 - Assumptions (cooking method, skin on/off, added oil) are written in `label_notes`.
-- **No LLM-generated labels.** The model under evaluation must not grade itself.
+- **No LLM-generated label values.** Text labels are chosen by the author. For the 20 IFPRI atlas meals, database entries and composition rules were chosen by Claude (`labeled_by: claude`); weights come from the atlas and all values are computed in code. See `DATACARD.md` §4.
 
 ## Portion conventions (v0.1)
 

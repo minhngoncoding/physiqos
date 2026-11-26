@@ -1,6 +1,6 @@
-"""Build data/image_v0.1.jsonl (Nutrition5k part) from data/nutrition5k_selected.csv.
+"""Build data/image_v0.1.jsonl from the Nutrition5k and IFPRI atlas selections.
 
-For each selected dish:
+Nutrition5k (data/nutrition5k_selected.csv), for each selected dish:
 - items: one FoodItem per ingredient. Grams come from the dish metadata,
   nutrients from ingredients_metadata.csv (cal/g, fat/carb/protein g per g),
   stored as per 100 g (× 100) so text and image samples share one unit.
@@ -10,6 +10,15 @@ For each selected dish:
 - split: 70/30 dev/test stratified by kcal bin, fixed seed (same rule as
   scripts/split_dataset.py, which only handles text rows). Rows already in
   the file keep their split, so re-running never reshuffles a frozen split.
+
+IFPRI atlas (data/ifpri_atlas_selected.json), for each selected meal photo:
+- The atlas gives the cooked weight of each dish on the tray, not nutrients.
+  `items` are filled in by hand in the JSON (lookup.py entries for each dish,
+  or its ingredients), with `labeled_by` / `labeled_at` / `label_notes`.
+- label: computed in code as Σ weight × per_100g / 100.
+- split: frozen in the JSON, assigned per split_group before labeling
+  (one group per meal; meals sharing most dishes would share a group).
+- Entries without items yet are skipped and reported as pending.
 
 Rows whose images are self-photographed are kept as they are.
 Every row is checked with ImageMeal before anything is written.
@@ -34,6 +43,7 @@ from pydantic import ValidationError
 ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / "data" / "raw" / "nutrition5k"
 SELECTED = ROOT / "data" / "nutrition5k_selected.csv"
+ATLAS_SELECTED = ROOT / "data" / "ifpri_atlas_selected.json"
 OUT = ROOT / "data" / "image_v0.1.jsonl"
 
 SEED = 42
@@ -130,6 +140,51 @@ def build_row(sample_id: str, sel: dict, dish: dict, ingredients: dict) -> dict:
     }
 
 
+def kcal_bin(kcal: float) -> str:
+    """Same bins as the Nutrition5k selection, so tags are comparable."""
+    for lo, hi in [(0, 50), (50, 250), (250, 500), (500, 750)]:
+        if kcal < hi:
+            return f"{lo}-{hi}"
+    return "750-inf"
+
+
+def atlas_dish_id(entry: dict) -> str:
+    return f"atlas_{entry['atlas_meal']:03d}_{entry['portion']}"
+
+
+def build_atlas_row(sample_id: str, entry: dict) -> dict:
+    items = entry["items"]
+    label = {
+        name: round(sum(i["weight"] * i["nutrient_per_100g"][name] / 100 for i in items), 4)
+        for name in ("calories", "protein", "carb", "fat")
+    }
+    return {
+        "id": sample_id,
+        "modality": "image",
+        "images": [
+            {
+                "path": entry["image"],
+                "view": "overhead",
+                "source": "ifpri_atlas",
+                "dish_id": atlas_dish_id(entry),
+            }
+        ],
+        "items": items,
+        "label": label,
+        "split": entry["split"],
+        "tags": [
+            "ifpri_atlas",
+            f"kcal_{kcal_bin(label['calories'])}",
+            f"portion_{entry['portion']}",
+            f"atlas_meal_{entry['atlas_meal']:03d}",
+        ],
+        "expected_needs_clarification": False,
+        "label_notes": entry["label_notes"],
+        "labeled_by": entry["labeled_by"],
+        "labeled_at": entry["labeled_at"],
+    }
+
+
 def assign_splits(rows: list[dict], frozen: dict[str, str]) -> None:
     strata: dict[str, list[dict]] = defaultdict(list)
     for row in rows:
@@ -161,11 +216,11 @@ def main() -> None:
         for r in existing
         if r["images"][0]["source"] == "nutrition5k"
     }
-    # Keep ids stable: existing Nutrition5k rows keep theirs, new dishes get the next free ones.
+    # Keep ids stable: existing rows keep theirs, new dishes get the next free ones.
     old_ids = {
         r["images"][0]["dish_id"]: r["id"]
         for r in existing
-        if r["images"][0]["source"] == "nutrition5k"
+        if r["images"][0]["source"] != "self"
     }
     used = {r["id"] for r in existing}
     next_num = max((int(i[1:]) for i in used), default=0) + 1
@@ -184,7 +239,19 @@ def main() -> None:
         rows.append(build_row(sample_id, sel, dishes[sel["dish_id"]], ingredients))
     assign_splits(rows, frozen)
 
-    all_rows = sorted(rows + self_rows, key=lambda r: r["id"])
+    atlas_rows, pending = [], []
+    atlas = json.loads(ATLAS_SELECTED.read_text(encoding="utf-8")) if ATLAS_SELECTED.exists() else []
+    for entry in sorted(atlas, key=atlas_dish_id):
+        if not entry["items"] or not entry["labeled_by"]:
+            pending.append(atlas_dish_id(entry))
+            continue
+        sample_id = old_ids.get(atlas_dish_id(entry))
+        if sample_id is None:
+            sample_id = f"i{next_num:03d}"
+            next_num += 1
+        atlas_rows.append(build_atlas_row(sample_id, entry))
+
+    all_rows = sorted(rows + atlas_rows + self_rows, key=lambda r: r["id"])
     errors = []
     for row in all_rows:
         try:
@@ -198,7 +265,12 @@ def main() -> None:
         sys.exit(1)
 
     splits = Counter((next(t for t in r["tags"] if t.startswith("kcal_")), r["split"]) for r in rows)
-    print(f"{len(rows)} Nutrition5k rows + {len(self_rows)} self-photographed rows, all valid")
+    print(
+        f"{len(rows)} Nutrition5k + {len(atlas_rows)} IFPRI atlas + "
+        f"{len(self_rows)} self-photographed rows, all valid"
+    )
+    if pending:
+        print(f"IFPRI atlas: {len(pending)} meal(s) pending labels ({', '.join(pending[:5])}{', ...' if len(pending) > 5 else ''})")
     for kcal in sorted({k for k, _ in splits}):
         print(f"  {kcal:<14} dev {splits[(kcal, 'dev')]:>2}  test {splits[(kcal, 'test')]:>2}")
 

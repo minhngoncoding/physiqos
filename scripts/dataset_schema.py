@@ -81,13 +81,15 @@ class TextMeal(LabeledMeal):
 class ImageRef(BaseModel):
     path: str = Field(min_length=1)
     view: Literal["overhead", "angle_45"]
-    source: Literal["nutrition5k", "self"]
-    dish_id: str | None = None  # original Nutrition5k dish id
+    source: Literal["nutrition5k", "ifpri_atlas", "self"]
+    # Id in the source dataset: Nutrition5k "dish_<id>", IFPRI atlas
+    # "atlas_<meal>_<portion>" (e.g. "atlas_065_M").
+    dish_id: str | None = None
 
     @model_validator(mode="after")
     def check_dish_id(self):
-        if self.source == "nutrition5k" and not self.dish_id:
-            raise ValueError("Nutrition5k image needs dish_id")
+        if self.source != "self" and not self.dish_id:
+            raise ValueError(f"{self.source} image needs dish_id")
         return self
 
 

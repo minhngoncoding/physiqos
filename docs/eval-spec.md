@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | Draft v0.1 |
 | **Owner** | @minhngoncoding |
-| **Last updated** | 2026-11-23 |
+| **Last updated** | 2026-11-26 |
 | **Related** | [`docs/ROADMAP.md`](ROADMAP.md) · `data/DATACARD.md` (W1) · eval harness (W2) |
 
 > Values marked **(proposed)** are initial choices to be validated against the W2 baseline. Any change to a threshold must be recorded in the [Changelog](#11-changelog) with a reason.
@@ -79,9 +79,9 @@ Full details live in `data/DATACARD.md`. Summary:
 | Set | Size | Composition |
 |---|---|---|
 | Text | 75 | **A** single item with grams (23) · **B** single item, household units (17) · **C** multi-item meals (21) · **D** hard cases: typos, mixed language, non-food, vague (14). ≥ 60% Vietnamese. |
-| Image | ~40 | ~30 Nutrition5k dishes (stratified by kcal range) + ~10 self-photographed Vietnamese meals weighed on a kitchen scale |
+| Image | 50 | 30 Nutrition5k dishes (stratified by kcal range) + 20 Vietnamese meals from the IFPRI photographic food atlas (dish weights measured by the atlas authors; one portion size per meal). Self-photographed meals later |
 
-**Ground truth.** Labels come from USDA FoodData Central and the Vietnamese Food Composition Table, computed as `Σ grams × per_100g / 100` in code. Every value records its source and food ID. **No LLM is used to produce labels.**
+**Ground truth.** Text labels come from USDA FoodData Central and the Vietnamese Food Composition Table, computed as `Σ grams × per_100g / 100` in code. Nutrition5k image labels are the dataset's own totals (ingredients weighed by its authors), with per-ingredient values converted from per gram to per 100 g. IFPRI atlas meals use the dish weights from the atlas and are labeled like text samples (database lookup per dish). Self-photographed meals are weighed on a kitchen scale and labeled the same way. Every value records its source and food ID. **No LLM output is used as a label value.** For the IFPRI atlas meals, the database entries and composition rules were chosen by Claude (`labeled_by: claude`), so those results are reported separately.
 
 **Required edge cases** (to exercise §5.1 and §5.4): near-zero-kcal items (iced tea, black coffee, broth), items with a zero macro (e.g. 0 g carbs), and non-food inputs.
 
@@ -193,7 +193,9 @@ A release candidate ships only if **all** of the following hold on the **test sp
 ## 7. Evaluation protocol
 
 ### 7.1 Splits
-- **70% dev / 30% test**, **stratified** by `group` (A–D) × `modality` (text / image) × language (Vietnamese / other), fixed random seed (`42`), stored in each sample's `split` field.
+- **70% dev / 30% test**, fixed random seed (`42`), stored in each sample's `split` field. Stratified per modality:
+  - **Text:** by `group` (A–D) × language (Vietnamese / other).
+  - **Image:** Nutrition5k by kcal bin (image samples have no group or language); IFPRI atlas per meal (one photo per meal, no two meals sharing most of their dishes). Rows already split keep their split when the file is rebuilt.
 - Splits are created **before** any model output is inspected.
 
 ### 7.2 Using the test set
@@ -238,3 +240,6 @@ How ambiguous portions are labelled in the golden set, so that scoring is determ
 | Version | Date | Change |
 |---|---|---|
 | v0.1 | 2026-11-23 | Initial draft |
+| v0.1 | 2026-11-26 | §4: ground truth also covers Nutrition5k image labels (dataset totals, per g × 100) and self-photographed meals. §7.1: split stratified per modality: text by group × language, image by kcal bin, because image samples have no group or language. No threshold changed. |
+| v0.1 | 2026-11-26 | §4: image set is 30 Nutrition5k + 20 IFPRI atlas Vietnamese meals (was ~30 + ~10 self-photographed). §7.1: atlas split per meal. No threshold changed. |
+| v0.1 | 2026-11-26 | §4: IFPRI atlas labels: database entries chosen by Claude, values computed in code from atlas weights; reported separately. No threshold changed. |
