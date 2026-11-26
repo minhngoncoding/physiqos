@@ -1,0 +1,31 @@
+dish_id,kcal_bin,ingr_group,kcal,mass_g,protein_g,carb_g,fat_g,n_ingr,ingredients
+dish_1565035774,50-250,3-5,57.5,185.0,3.129,12.25,0.441,3,onions; cauliflower; bell peppers
+dish_1558030182,50-250,1-2,67.759995,88.0,1.76,14.96,0.088,1,potatoes
+dish_1558639555,50-250,3-5,156.049011,320.0,2.725,38.18,1.278,4,cantaloupe; corn on the cob; carrot; apple
+dish_1561147997,50-250,6+,185.180023,133.0,7.060393,20.639935,8.629007,12,chard; vinegar; arugula; blueberries; olive oil; cheese pizza; almonds; salt; raspberries; mustard; zucchini; carrot
+dish_1561393741,50-250,1-2,188.830002,165.0,12.776,5.286,12.956,2,broccoli; scrambled eggs
+dish_1561405356,50-250,6+,206.645203,176.0,33.413628,7.496847,4.198396,12,ginger; vinegar; olive oil; garlic; soy sauce; broccoli; green onions; salt; chicken; white rice; spinach (raw); green beans
+dish_1562788536,50-250,1-2,245.132004,190.0,5.398,44.751999,6.61,2,pilaf; corn on the cob
+dish_1565711498,50-250,3-5,246.827271,229.0,16.580688,10.568151,15.955486,5,salt; pepper; brussels sprouts; scrambled eggs; olive oil
+dish_1566501575,250-500,1-2,251.693985,54.0,3.348,26.892,15.551999,1,brownies
+dish_1562172600,250-500,1-2,263.599976,370.0,30.68,16.43,6.02,2,egg whites; roasted potatoes
+dish_1561739265,250-500,3-5,292.040009,308.0,10.689,41.127003,9.989,5,sweet potato; hash browns; broccoli; egg whites; berries
+dish_1566851616,250-500,3-5,300.7789,248.0,14.512781,36.141609,11.60261,4,caesar salad; broccoli; cheese pizza; olive oil
+dish_1557862738,250-500,1-2,319.779999,118.0,29.5,0.0,22.42,1,steak
+dish_1566589967,250-500,6+,381.661957,322.0,46.94825,13.400992,16.1381,12,onions; olive oil; garlic; bell peppers; salt; tomatoes; pepper; millet; chicken; spinach (raw); jalapenos; tofu
+dish_1562691032,250-500,6+,419.681702,415.0,17.94734,39.058826,22.039829,6,berries; olive oil; pineapple; scrambled eggs; roasted potatoes; broccoli
+dish_1568401199,250-500,3-5,459.643372,343.0,37.956963,24.832966,22.450722,4,tuna salad; squash; olive oil; salt
+dish_1559844323,500-750,1-2,518.369995,161.0,18.487,32.740002,39.761997,2,grapes; almonds
+dish_1565894910,500-750,3-5,537.113037,179.0,18.191,67.945007,21.353001,3,pizza; cheese pizza; cookies
+dish_1559849537,500-750,3-5,549.52301,393.0,15.438001,65.328995,30.711,4,grapes; pears; mandarin oranges; almonds
+dish_1560368570,500-750,6+,555.932739,452.0,46.5131,27.133636,39.187859,24,honeydew melons; pepper; cherry tomatoes; lettuce; mixed greens; pork; mustard; olive oil; lemon juice; onions; carrot; broccoli; green onions; shallots; arugula; vinegar; brown rice; fish; pumpkin seeds; basil; parsley; country rice; salt; garlic
+dish_1563305513,500-750,1-2,606.251953,228.0,25.536001,76.380005,21.431999,1,cheese pizza
+dish_1565974409,500-750,1-2,688.649963,228.0,51.470001,5.48,50.0,2,chicken apple sausage; bacon
+dish_1562790855,500-750,6+,739.376465,507.0,78.431671,23.783417,67.884842,21,radishes; fish; cherry tomatoes; shallots; onions; mustard; parsley; garlic; basil; salt; pepper; pork; lemon juice; brown rice; country rice; cucumbers; olive oil; vinegar; bell peppers; broccoli; green onions
+dish_1558630325,750-inf,3-5,751.541992,269.0,27.081001,46.563999,58.078003,3,apple; garden salad; almonds
+dish_1565898230,750-inf,6+,780.202026,500.0,73.94603,19.73115,42.676907,27,garlic; bell peppers; beef; cherry tomatoes; brown rice; ginger; olive oil; vinegar; spinach (cooked); lime; shallots; bok choy; salmon; millet; vinaigrette; jalapenos; spinach (raw); green beans; feta cheese; cucumbers; lettuce; cilantro; lemon juice; onions; salt; chili; olives
+dish_1568305257,750-inf,6+,837.147766,420.0,52.072983,9.31325,65.496887,10,turkey bacon; salt; bell peppers; mustard; olive oil; cucumbers; vinegar; scrambled eggs; garlic; radishes
+dish_1566414342,750-inf,6+,846.367065,552.0,83.57795,53.343304,31.578682,19,garlic; pepper; mushroom; oregano; cream; wheat berry; butter; basil; salt; shallots; white wine; chicken; quinoa; arugula; thyme; olive oil; rosemary; lemon juice; roasted potatoes
+dish_1566328805,750-inf,3-5,927.809998,488.0,77.984001,85.054001,28.737,4,cherry tomatoes; pizza; chicken; pineapple
+dish_1563478751,750-inf,6+,950.395081,545.0,74.772202,54.133282,45.303986,12,cream; mushroom; spinach (raw); olive oil; pasta; beef; wine; garlic; sour cream; onions; thyme; salt
+dish_1558375886,750-inf,3-5,1050.511108,277.0,44.874004,42.757,84.153,3,almonds; sausage; grapes

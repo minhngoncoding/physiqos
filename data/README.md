@@ -7,7 +7,8 @@ Evaluation datasets for PhysiqOS calorie and macro estimation. The metrics, ship
 | File               | Status                         | Description                                                                           |
 | ------------------ | ------------------------------ | ------------------------------------------------------------------------------------- |
 | `text_v0.1.jsonl`  | Labeled (75/75)                | 75 text prompts (groups A–D), one JSON object per line                                |
-| `image_v0.1.jsonl` | Planned                        | ~40 meal images (Nutrition5k subset + self-photographed, weighed meals)               |
+| `image_v0.1.jsonl` | 30 Nutrition5k, self-photographed pending | ~40 meal images (Nutrition5k subset + self-photographed, weighed meals). Built by `scripts/build_image_dataset.py` |
+| `nutrition5k_selected.csv` | Fixed (30)             | The 30 Nutrition5k dishes in the image set: dish ID, kcal bin, ingredient group, ground-truth totals. Fixed list, see [Nutrition5k subset](#nutrition5k-subset) |
 | `DATACARD.md`      | Planned                        | Purpose, composition, labeling process, known limitations and biases                  |
 | `images/`          | Planned                        | Self-photographed images only. Nutrition5k images are referenced by ID, not committed |
 
@@ -48,14 +49,28 @@ Labeling adds `items` (per-item grams, nutrient values per 100 g, `source`, `sou
 | --------------------------------------------------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | [USDA FoodData Central](https://fdc.nal.usda.gov/) (Foundation, SR Legacy, FNDDS) | Ingredients and generic foods | Public domain (CC0 1.0)                                                                                                               |
 | Bảng thành phần thực phẩm Việt Nam, Viện Dinh dưỡng Quốc gia                      | Vietnamese foods and dishes   | Copyrighted publication. Only individual values are cited, with the table entry as `source_id`. The table itself is not redistributed |
-| [Nutrition5k](https://github.com/google-research-datasets/Nutrition5k)            | Image set (planned)           | CC BY 4.0. Images are referenced by dish ID and downloaded by script                                                                  |
+| [Nutrition5k](https://github.com/google-research-datasets/Nutrition5k)            | Image set                     | CC BY 4.0. Images are referenced by dish ID and downloaded by script                                                                  |
 
 Raw database downloads are not committed. To reproduce lookups, download the sources above and record the release version and download date in `DATACARD.md`.
 
 Expected local paths (git-ignored), used by `scripts/lookup.py`:
 
 - `data/FoodData_Central_*.json`: USDA FDC JSON downloads (SR Legacy, Foundation, Survey/FNDDS 2024-10-31; FNDDS from <https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_survey_food_json_2024-10-31.zip>, unzipped file renamed from `surveyDownload.json`)
+- `data/raw/nutrition5k/`: `dish_metadata_cafe1.csv`, `dish_metadata_cafe2.csv` and `ingredients_metadata.csv` from the Nutrition5k bucket (`gs://nutrition5k_dataset/nutrition5k_dataset/metadata/`), and the overhead image of each selected dish at `images/dish_<id>/rgb.png` (from `imagery/realsense_overhead/dish_<id>/rgb.png`, 30 images, ~12 MB). `scripts/build_image_dataset.py` reads these.
 - `data/raw/vn_fct/VTN_FCT_2007.pdf`: the 2007 Vietnamese table as published by FAO ([PDF](https://www.fao.org/fileadmin/templates/food_composition/documents/pdf/VTN_FCT_2007.pdf)), 525 foods. `source_id` is the table's *Mã số*. Values are per 100 g edible portion. Note: kcal for alcoholic drinks excludes alcohol (beer 11 kcal/100 g), so use USDA for those.
+
+## Nutrition5k subset
+
+`nutrition5k_selected.csv` fixes which 30 dishes are in the image set:
+
+- Only dishes in the official `rgb_test` split that have an overhead RGB image.
+- At least 50 kcal (drops trivial plates such as a few leaves).
+- No ingredient named `deprecated` (label not traceable).
+- Four kcal bins `[50,250) [250,500) [500,750) [750,∞)` with 8/8/7/7 dishes: equal, not proportional, because 67% of Nutrition5k is under 250 kcal while real meals are mostly 400–800 kcal. Inside a bin, dishes are spread over ingredient-count groups (1–2, 3–5, 6+).
+- No two dishes captured less than 30 minutes apart. Dish IDs are capture timestamps and Nutrition5k photographs a plate after each added ingredient, so close IDs are near-duplicate images.
+- Three almond-only or almond-dominated plates were swapped for non-almond dishes of the same bin (the cafeteria has a nut bar; almonds fill the small high-kcal bins). 5/30 dishes still contain almonds.
+
+Labels are the Nutrition5k totals (ingredients weighed by the dataset authors). Per-ingredient values come from `ingredients_metadata.csv`, which gives values per gram; they are stored as `nutrient_per_100g = value per g × 100` so text and image samples share one unit. `source_id` is the ingredient `id` in that file.
 
 ## Labeling rules (summary)
 
