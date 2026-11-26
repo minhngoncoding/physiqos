@@ -1,12 +1,15 @@
 """Validate a JSONL eval dataset against the schema and print its composition.
 
-Checks every row with `dataset_schema.Meal` (types, allowed values, label =
-sum of items), then file-level rules a single row cannot see (duplicate ids,
-share of Vietnamese prompts), and prints distributions by group, language,
-split and kcal range.
+Each row is checked with the model for its `modality` (`TextMeal` for "text",
+the default when the field is missing; `ImageMeal` for "image"): types, allowed
+values, label = sum of items. Then file-level rules a single row cannot see
+(duplicate ids across all given files, share of Vietnamese text prompts), and
+distributions by modality, split and kcal range, plus group/language for text
+and kcal bin / ingredient group / image source for images.
 
-Usage (path defaults to data/text_v0.1.jsonl):
-    python scripts/validate_dataset.py data/text_v0.1.jsonl                  # strict: every row must pass
+Usage (paths default to data/text_v0.1.jsonl and data/image_v0.1.jsonl):
+    python scripts/validate_dataset.py                                       # whole golden set, strict
+    python scripts/validate_dataset.py data/image_v0.1.jsonl                 # one file
     python scripts/validate_dataset.py data/text_v0.1.jsonl --labeled-only   # while labeling: skip rows without a label
 
 Exit code 0 when everything passes, 1 otherwise (so CI can gate on it).
@@ -18,11 +21,17 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+from dataset_schema import ImageMeal, TextMeal
 from pydantic import ValidationError
 
-from dataset_schema import Meal
+Sample = TextMeal | ImageMeal
+MODELS: dict[str, type[TextMeal] | type[ImageMeal]] = {
+    "text": TextMeal,
+    "image": ImageMeal,
+}
+DEFAULT_PATHS = [Path("data/text_v0.1.jsonl"), Path("data/image_v0.1.jsonl")]
 
-MIN_VI_SHARE = 0.6  # week-01 spec §5.1: at least 60% Vietnamese prompts
+MIN_VI_SHARE = 0.6  # week-01 spec §5.1: at least 60% Vietnamese text prompts
 
 # Upper bounds (exclusive) of the kcal ranges. 0 is its own bucket so the
 # non-food / needs-clarification samples are visible in the table.
@@ -40,9 +49,9 @@ def kcal_bucket(kcal: float) -> str:
 
 def load_and_validate(
     path: Path, labeled_only: bool
-) -> tuple[list[Meal], list[str], int, int]:
+) -> tuple[list[Sample], list[str], int, int]:
     """Return (valid samples, error messages, labeled row count, total row count)."""
-    samples: list[Meal] = []
+    samples: list[Sample] = []
     errors: list[str] = []
     labeled = total = 0
 
@@ -56,7 +65,7 @@ def load_and_validate(
         try:
             row = json.loads(raw)
         except json.JSONDecodeError as e:
-            errors.append(f"line {lineno}: invalid JSON ({e.msg})")
+            errors.append(f"{path.name}:{lineno}: invalid JSON ({e.msg})")
             continue
 
         if "label" in row:
@@ -64,18 +73,26 @@ def load_and_validate(
         elif labeled_only:
             continue
 
+        row_id = row.get("id", "?")
+        modality = row.get("modality", "text")
+        model = MODELS.get(modality)
+        if model is None:
+            errors.append(
+                f"{path.name}:{lineno} [{row_id}] modality: unknown {modality!r}"
+            )
+            continue
+
         try:
-            samples.append(Meal.model_validate(row))
+            samples.append(model.model_validate(row))
         except ValidationError as e:
-            row_id = row.get("id", "?")
             for err in e.errors():
                 field = ".".join(str(part) for part in err["loc"]) or "(row)"
-                errors.append(f"line {lineno} [{row_id}] {field}: {err['msg']}")
+                errors.append(f"{path.name}:{lineno} [{row_id}] {field}: {err['msg']}")
 
     return samples, errors, labeled, total
 
 
-def check_file_level(samples: list[Meal], strict: bool) -> list[str]:
+def check_file_level(samples: list[Sample], strict: bool) -> list[str]:
     errors: list[str] = []
 
     ids = Counter(s.id for s in samples)
@@ -83,9 +100,10 @@ def check_file_level(samples: list[Meal], strict: bool) -> list[str]:
         if count > 1:
             errors.append(f"duplicate id {sample_id} ({count} rows)")
 
-    # Language share only means something on the full set.
-    if strict and samples:
-        vi_share = sum(s.lang == "vi" for s in samples) / len(samples)
+    # Language share only means something on the full text set.
+    texts = [s for s in samples if isinstance(s, TextMeal)]
+    if strict and texts:
+        vi_share = sum(s.lang == "vi" for s in texts) / len(texts)
         if vi_share < MIN_VI_SHARE:
             errors.append(f"Vietnamese share {vi_share:.0%} < {MIN_VI_SHARE:.0%}")
 
@@ -100,28 +118,52 @@ def print_table(title: str, counter: Counter, order: list[str] | None = None) ->
         print(f"  {key:<10} {n:>4}  {n / total:>5.0%}")
 
 
-def print_distribution(samples: list[Meal]) -> None:
+def tag_value(sample: Sample, prefix: str) -> str:
+    return next(
+        (t.removeprefix(prefix) for t in sample.tags if t.startswith(prefix)), "?"
+    )
+
+
+def print_distribution(samples: list[Sample]) -> None:
     if not samples:
         return
-    print_table("group", Counter(s.group.value for s in samples))
-    print_table("lang", Counter(s.lang for s in samples))
-    print_table("split", Counter(s.split for s in samples))
+    print_table("modality", Counter(s.modality for s in samples))
+    print_table("modality × split", Counter(f"{s.modality}/{s.split}" for s in samples))
     print_table(
         "kcal",
         Counter(kcal_bucket(s.label.calories) for s in samples),
         order=["0", *[name for _, name in KCAL_BUCKETS], "≥1000"],
     )
-    print_table("group × split", Counter(f"{s.group.value}/{s.split}" for s in samples))
+
+    texts = [s for s in samples if isinstance(s, TextMeal)]
+    if texts:
+        print("\n== text ==")
+        print_table("group", Counter(s.group.value for s in texts))
+        print_table("lang", Counter(s.lang for s in texts))
+        print_table(
+            "group × split", Counter(f"{s.group.value}/{s.split}" for s in texts)
+        )
+
+    images = [s for s in samples if isinstance(s, ImageMeal)]
+    if images:
+        print("\n== image ==")
+        print_table("image source", Counter(s.images[0].source for s in images))
+        print_table("kcal bin", Counter(tag_value(s, "kcal_") for s in images))
+        print_table("ingredient group", Counter(tag_value(s, "ingr_") for s in images))
+        print_table(
+            "kcal bin × split",
+            Counter(f"{tag_value(s, 'kcal_')}/{s.split}" for s in images),
+        )
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
-        "path",
+        "paths",
         type=Path,
-        nargs="?",
-        default=Path("data/text_v0.1.jsonl"),
-        help="JSONL file (default: data/text_v0.1.jsonl, relative to the repo root)",
+        nargs="*",
+        default=DEFAULT_PATHS,
+        help="JSONL files (default: data/text_v0.1.jsonl data/image_v0.1.jsonl, relative to the repo root)",
     )
     parser.add_argument(
         "--labeled-only",
@@ -130,10 +172,17 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    samples, errors, labeled, total = load_and_validate(args.path, args.labeled_only)
+    samples: list[Sample] = []
+    errors: list[str] = []
+    for path in args.paths:
+        file_samples, file_errors, labeled, total = load_and_validate(
+            path, args.labeled_only
+        )
+        samples += file_samples
+        errors += file_errors
+        print(f"{path}: labeled {labeled}/{total}, valid {len(file_samples)}")
     errors += check_file_level(samples, strict=not args.labeled_only)
 
-    print(f"{args.path}: labeled {labeled}/{total}, valid {len(samples)}")
     print_distribution(samples)
 
     if errors:

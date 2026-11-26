@@ -1,6 +1,7 @@
 from datetime import date
 from enum import StrEnum
-from typing import Literal, Optional
+from typing import Literal
+
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -22,30 +23,29 @@ class FoodItem(BaseModel):
     weight: float = Field(gt=0)
     food_name: str = Field(min_length=1)
     nutrient_per_100g: Nutrients
-    # Allowed label sources, see "Label sources" in data/README.md.
-    # Adding a source = update README (license) + DATACARD too.
-    source: Literal["usda_foundation", "usda_sr_legacy", "usda_fndds", "vn_fct"]
+    source: Literal[
+        "usda_foundation", "usda_sr_legacy", "usda_fndds", "vn_fct", "nutrition5k"
+    ]
     source_id: str = Field(min_length=1)
+    # e.g. ["ức gà", "chicken breast"].
+    aliases: list[str] = Field(default_factory=list)
 
 
-class Meal(BaseModel):
-    id: str = Field(pattern=r"^t\d{3}$")
-    lang: Literal["vi", "en", "mixed"]
-    group: FoodGroup
-    input: str = Field(min_length=2)
+class LabeledMeal(BaseModel):
+    """Fields and checks shared by every eval sample, whatever the input is."""
+
+    id: str
     items: list[FoodItem]
     split: Literal["dev", "test"]
     tags: list[str]
     expected_needs_clarification: bool
     label: Nutrients
-    label_notes: Optional[str] = None
+    label_notes: str | None = None
     labeled_by: str = Field(min_length=1)
     labeled_at: date
 
     @model_validator(mode="after")
     def check_label_matches_items(self):
-        # Empty items are allowed only when the model should ask back, or when
-        # the input is not food at all (label is then all zero).
         if (
             not self.items
             and not self.expected_needs_clarification
@@ -68,3 +68,34 @@ class Meal(BaseModel):
                 )
 
         return self
+
+
+class TextMeal(LabeledMeal):
+    id: str = Field(pattern=r"^t\d{3}$")
+    modality: Literal["text"] = "text"
+    lang: Literal["vi", "en", "mixed"]
+    group: FoodGroup
+    input: str = Field(min_length=2)
+
+
+class ImageRef(BaseModel):
+    path: str = Field(min_length=1)
+    view: Literal["overhead", "angle_45"]
+    source: Literal["nutrition5k", "self"]
+    dish_id: str | None = None  # original Nutrition5k dish id
+
+    @model_validator(mode="after")
+    def check_dish_id(self):
+        if self.source == "nutrition5k" and not self.dish_id:
+            raise ValueError("Nutrition5k image needs dish_id")
+        return self
+
+
+class ImageMeal(LabeledMeal):
+    id: str = Field(pattern=r"^i\d{3}$")
+    modality: Literal["image"]
+    images: list[ImageRef] = Field(min_length=1)
+    prompt: str | None = None  # optional text sent with the photo
+
+
+Meal = TextMeal
