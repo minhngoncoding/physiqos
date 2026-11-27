@@ -27,7 +27,9 @@ def stratum(row: dict) -> tuple[str, str, str]:
     return (row.get("modality", "text"), row["group"], lang)
 
 
-def assign_splits(rows: list[dict], seed: int = SEED, test_ratio: float = TEST_RATIO) -> None:
+def assign_splits(
+    rows: list[dict], seed: int = SEED, test_ratio: float = TEST_RATIO
+) -> None:
     strata: dict[tuple[str, str, str], list[dict]] = defaultdict(list)
     for row in rows:
         strata[stratum(row)].append(row)
@@ -44,7 +46,9 @@ def assign_splits(rows: list[dict], seed: int = SEED, test_ratio: float = TEST_R
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("path", type=Path)
-    parser.add_argument("--write", action="store_true", help="overwrite the file in place")
+    parser.add_argument(
+        "--write", action="store_true", help="overwrite the file in place"
+    )
     args = parser.parse_args()
 
     lines = args.path.read_text(encoding="utf-8").splitlines()
